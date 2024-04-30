@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS assignments;
+DROP TABLE IF EXISTS submissions;
+
+COMMIT;
