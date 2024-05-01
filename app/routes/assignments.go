@@ -3,12 +3,13 @@ package routes
 import (
 	"database/sql"
 	handlers "madaurus/dev/assignment/app/handlers/assignments"
+	"madaurus/dev/assignment/app/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
 
 func AssignmentsRoute(c *gin.Engine, db *sql.DB){
-	assignmentsRoute := c.Group("/assignments")
+	assignmentsRoute := c.Group("/assignments", middlewares.Authentication())
 	assignmentsRoute.GET("", handlers.GetAssignments(db))
 	assignmentsRoute.GET(":assignmentId", handlers.GetAssignmentByID(db))
 	assignmentsRoute.POST("", handlers.CreateAssignment(db))

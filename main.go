@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/knadh/koanf"
@@ -57,6 +58,11 @@ func main() {
 		log.Fatal(err)
 	}
 	m.Up()
+	err = os.Setenv("JWT_SECRET", k.String("JWT_SECRET"))
+	if err != nil {
+		log.Fatal("JWT_SECRET not set")
+
+	}
 
 	// Listen and Server in 0.0.0.0:8080
 	err = server.Run(":8080")

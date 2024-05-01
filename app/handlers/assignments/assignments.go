@@ -26,8 +26,8 @@ func GetAssignments(db *sql.DB) gin.HandlerFunc {
 				return
 			}
 		}
-		moduleId := c.Query("module_id");
-		
+		moduleId := c.Query("module_id")
+
 		filter := interfaces.AssignmentFilter{
 			Teacher: &teacherId,
 			Module:  &moduleId,
@@ -46,9 +46,9 @@ func GetAssignments(db *sql.DB) gin.HandlerFunc {
 func CreateAssignment(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var assignment models.Assignment
-		err := c.BindJSON(&assignment)
 		user := c.MustGet("user").(*utils.UserDetails)
-
+		assignment.ID = user.ID
+		err := c.BindJSON(&assignment)
 
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
@@ -60,7 +60,7 @@ func CreateAssignment(db *sql.DB) gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(200, gin.H{"message": "Assignment added successfully"})
+		c.JSON(200, gin.H{"message": "Assignment Created Successfully"})
 	}
 }
 
@@ -84,14 +84,13 @@ func UpdateAssignment(db *sql.DB) gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "error when parsing assignment id"})
 			return
 		}
-		
 
 		err = services.UpdateAssignment(c.Request.Context(), db, assignmentId, editedAssignment)
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(200, gin.H{"message": "Assignment added successfully"})
+		c.JSON(200, gin.H{"message": "Assignment Updated Successfully"})
 	}
 }
 
@@ -180,6 +179,6 @@ func DeleteAssignmentByID(db *sql.DB) gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(200, gin.H{"message": "Assignment deleted successfully"})
+		c.JSON(200, gin.H{"message": "Assignment Deleted Successfully"})
 	}
 }

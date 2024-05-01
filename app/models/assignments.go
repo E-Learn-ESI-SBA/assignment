@@ -5,12 +5,12 @@ import (
 )
 
 type Assignment struct {
-	ID          int       `json:"id" binding:"required"`
-	Title       string    `json:"title" binding:"required"`
+	ID          int       `json:"id"`
+	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Deadline    time.Time `json:"deadline"`
-	Promo       int       `json:"promo" binding:"required"`
-	Groups      []int     `json:"groups" binding:"required"`
-	Teacher     int       `json:"teacher_id" binding:"required"`
-	Module      string    `json:"module_id" binding:"required"`
+	Promo       int       `json:"promo"`
+	Groups      []int     `json:"groups"`
+	Teacher     int       `json:"teacher_id"`
+	Module      string    `json:"module_id"`
 }
