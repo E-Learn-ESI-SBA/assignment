@@ -76,7 +76,7 @@ func GetAssignments(ctx context.Context, db *sql.DB, filter interfaces.Assignmen
 		return assignments, err
 	}
 
-	defer rows.Close()
+	defer rows.Close() 
 
 	for rows.Next() {
 		var assignment models.Assignment

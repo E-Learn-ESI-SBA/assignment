@@ -47,6 +47,7 @@ func main() {
 	})
 
 	routes.AssignmentsRoute(server, Db)
+	routes.SubmissionsRoute(server, Db)
 
 	// Set up GoMigrate
 	driver, err := postgres.WithInstance(Db, &postgres.Config{})
