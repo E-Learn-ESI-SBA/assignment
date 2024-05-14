@@ -20,7 +20,7 @@ func GetSubmissionByAssignmentID(ctx context.Context, db *sql.DB, assignmentId u
 	}
 	for rows.Next() {
 		var submission models.Submission
-		if err = rows.Scan(&submission.ID, &submission.Assignment, &submission.Feedback, &submission.File, &submission.Grade, &submission.Student, &submission.CreatedAt , &submission.UpdatedAt, &submission.EvaluatedAt); err != nil {
+		if err = rows.Scan(&submission.ID, &submission.AssignmentId, &submission.Feedback, &submission.File, &submission.Grade, &submission.StudentId, &submission.CreatedAt , &submission.UpdatedAt, &submission.EvaluatedAt); err != nil {
 			log.Printf("Error scanning row: %v", err)
 			return submissions, err
 		}
@@ -49,7 +49,7 @@ func CreateSubmission(ctx context.Context, db *sql.DB, submission inputs.NewSubm
 
 func UpdateSubmission(ctx context.Context, db *sql.DB, submissionID int, editedSubmission models.Submission) error {
 	_, err := db.Exec("UPDATE submissions SET file = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND student_id = $3",
-		editedSubmission.File, submissionID, editedSubmission.Student)
+		editedSubmission.File, submissionID, editedSubmission.StudentId)
 	if err != nil {
 		log.Printf("Error when updating submission with ID %d: %v", submissionID, err)
 		return err
@@ -83,7 +83,7 @@ func GetSubmissionByID(ctx context.Context, db *sql.DB, submissionId int) (model
 	var submission models.Submission
 
 	err := db.QueryRow("SELECT * FROM submissions WHERE id = $1", submissionId).Scan(submission.ID, submission.File,
-		submission.Grade, submission.Feedback, submission.Student, submission.CreatedAt,
+		submission.Grade, submission.Feedback, submission.StudentId, submission.CreatedAt,
 		submission.UpdatedAt, submission.EvaluatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {

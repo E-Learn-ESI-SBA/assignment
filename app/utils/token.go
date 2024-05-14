@@ -8,14 +8,13 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 type LightUser struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
 	Role     string `json:"role"`
-	ID       uuid.UUID `json:"id"`
+	ID       string `json:"id"`
 	Avatar   string `json:"avatar"`
 	Group    string `json:"group"`
 	Year     string `json:"year"`
@@ -26,6 +25,7 @@ type UserDetails struct {
 }
 
 func ParseJwt(signedtoken string, secretKey string) (*jwt.Token, error) {
+	log.Println((signedtoken))
 	return jwt.Parse(signedtoken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -63,7 +63,7 @@ func ValidateToken(signedtoken string, secretKey string) (*UserDetails, error) {
 	user.Email = claims["email"].(string)
 	user.Username = claims["username"].(string)
 	user.Role = claims["role"].(string)
-	user.ID = claims["id"].(uuid.UUID)
+	user.ID = claims["id"].(string)
 	user.Avatar = claims["avatar"].(string)
 	user.Group = claims["group"].(string)
 	user.Year = claims["year"].(string)
