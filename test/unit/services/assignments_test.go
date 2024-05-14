@@ -74,7 +74,7 @@ func TestCreateAssignment(t *testing.T) {
 		Title:       "archi",
 		Description: "this is an assignment",
 		Deadline:    time.Now(),
-		Promo:       "2021",
+		Year:       "1",
 		Groups:      []uuid.UUID{ uuid.New(),uuid.New()},
 		Teacher:     teacher1.ID,
 		Module:      uuid.New(),

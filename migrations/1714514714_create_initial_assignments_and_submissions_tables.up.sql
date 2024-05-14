@@ -4,15 +4,15 @@ CREATE TABLE IF NOT EXISTS assignments (
     description TEXT,
     files VARCHAR[],
     deadline TIMESTAMP,
-    promo VARCHAR,
-    groups UUID[],
+    year VARCHAR,
+    groups string[],
     teacher_id UUID,
     module_id UUID
 );
 
 
 CREATE TABLE IF NOT EXISTS submissions (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     file VARCHAR(255),
     grade FLOAT,
     feedback TEXT,
