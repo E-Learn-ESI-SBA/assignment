@@ -8,10 +8,9 @@ import (
 	"madaurus/dev/assignment/app/models"
 	"madaurus/dev/assignment/app/utils"
 	"net/http"
-	"strconv"
 	"testing"
 	"time"
-
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,21 +24,21 @@ var admin utils.LightUser = utils.LightUser{
 	Username: "admin",
 	Role:     "Admin",
 	Email:    "admin@gmail.com",
-	ID:       33,
+	ID:       uuid.New(),
 }
 
 var teacher1 utils.LightUser = utils.LightUser{
 	Username: "mhammed",
 	Role:     "Teacher",
 	Email:    "f.mhammed@gmail.com",
-	ID:       1,
+	ID:        uuid.New(),
 }
 
 var teacher2 utils.LightUser = utils.LightUser{
 	Username: "poysa",
 	Role:     "Teacher",
 	Email:    "y.poysa@gmail.com",
-	ID:       2,
+	ID:       uuid.New(),
 }
 
 var secretKey string = "A1B2C3D4E5F6G7H8I9J0K"
@@ -71,14 +70,14 @@ func TestCreateAssignment(t *testing.T) {
 	}
 
 	globalAssignment := models.Assignment{
-		ID:          99,
+		ID:           uuid.New(),
 		Title:       "archi",
 		Description: "this is an assignment",
 		Deadline:    time.Now(),
-		Promo:       1,
-		Groups:      []int{4, 5},
+		Year:       "1",
+		Groups:      []uuid.UUID{ uuid.New(),uuid.New()},
 		Teacher:     teacher1.ID,
-		Module:      "55",
+		Module:      uuid.New(),
 	}
 
 	jsonModule, _ := json.Marshal(globalAssignment)
@@ -124,7 +123,7 @@ func TestCreateAssignment(t *testing.T) {
 
 func TestGetAssignmentById(t *testing.T) {
 
-	url := "http://localhost:8080/assignments/" + strconv.Itoa(globalAssignment.ID)
+	url := "http://localhost:8080/assignments/" + globalAssignment.ID.String()
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+teacher1Token)
 
@@ -145,7 +144,7 @@ func TestUpdateAssignment(t *testing.T) {
 	jsonAssignment, _ := json.Marshal(updatedAssignment)
 	req, _ := http.NewRequest(
 		"PUT",
-		"http://localhost:8080/assignments/" + strconv.Itoa(globalAssignment.ID),
+		"http://localhost:8080/assignments/" + globalAssignment.ID.String(),
 		bytes.NewReader(jsonAssignment),
 	)
 	req.Header.Set("Authorization", "Bearer "+teacher1Token)
@@ -173,7 +172,7 @@ func TestUpdateAssignment(t *testing.T) {
 }
 
 func TestDeleteAssignment(t *testing.T) {
-	url := "http://localhost:8080/assignments/" + strconv.Itoa(globalAssignment.ID)
+	url := "http://localhost:8080/assignments/" + globalAssignment.ID.String()
 	req, _ := http.NewRequest("DELETE", url, nil)
 	req.Header.Set("Authorization", "Bearer "+teacher2Token)
 

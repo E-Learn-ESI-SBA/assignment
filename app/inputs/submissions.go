@@ -1,11 +1,15 @@
 package inputs
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type NewSubmissionInput struct {
 	File       string    `json:"file"`
-	Assignment int       `json:"assignment_id"`
-	Student    int       `json:"student_id"`
+	Assignment uuid.UUID       `json:"assignment_id"`
+	Student    uuid.UUID       `json:"student_id"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }

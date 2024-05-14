@@ -2,15 +2,18 @@ package models
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Assignment struct {
-	ID          int       `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Deadline    time.Time `json:"deadline"`
-	Promo       int       `json:"promo"`
-	Groups      []int     `json:"groups"`
-	Teacher     int       `json:"teacher_id"`
-	Module      string    `json:"module_id"`
+	ID          uuid.UUID       `json:"id"`
+	Title       string          `json:"title"`
+	Description string    		`json:"description"`
+	Files	    []string        `json:"files"`
+	Deadline    time.Time 		`json:"deadline"`
+	Year        string       	`json:"year"`
+	Groups      []uuid.UUID     `json:"groups"`
+	Teacher     uuid.UUID       `json:"teacher_id"`
+	Module      uuid.UUID       `json:"module_id"`
 }
