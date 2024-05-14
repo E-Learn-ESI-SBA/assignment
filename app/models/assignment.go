@@ -13,7 +13,7 @@ type Assignment struct {
 	Files	    []string        `json:"files"`
 	Deadline    time.Time 		`json:"deadline"`
 	Year        string       	`json:"year"`
-	Groups      []uuid.UUID     `json:"groups"`
-	Teacher     uuid.UUID       `json:"teacher_id"`
-	Module      uuid.UUID       `json:"module_id"`
+	Groups      []string        `json:"groups"`
+	TeacherId   string          `json:"teacher_id"`
+	ModuleId    string          `json:"module_id"`
 }

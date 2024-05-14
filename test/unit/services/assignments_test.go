@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,21 +25,21 @@ var admin utils.LightUser = utils.LightUser{
 	Username: "admin",
 	Role:     "Admin",
 	Email:    "admin@gmail.com",
-	ID:       uuid.New(),
+	ID:       uuid.New().String(),
 }
 
 var teacher1 utils.LightUser = utils.LightUser{
 	Username: "mhammed",
 	Role:     "Teacher",
 	Email:    "f.mhammed@gmail.com",
-	ID:        uuid.New(),
+	ID:        uuid.New().String(),
 }
 
 var teacher2 utils.LightUser = utils.LightUser{
 	Username: "poysa",
 	Role:     "Teacher",
 	Email:    "y.poysa@gmail.com",
-	ID:       uuid.New(),
+	ID:       uuid.New().String(),
 }
 
 var secretKey string = "A1B2C3D4E5F6G7H8I9J0K"
@@ -70,14 +71,14 @@ func TestCreateAssignment(t *testing.T) {
 	}
 
 	globalAssignment := models.Assignment{
-		ID:           uuid.New(),
-		Title:       "archi",
-		Description: "this is an assignment",
-		Deadline:    time.Now(),
-		Year:       "1",
-		Groups:      []uuid.UUID{ uuid.New(),uuid.New()},
-		Teacher:     teacher1.ID,
-		Module:      uuid.New(),
+		ID:            uuid.New(),
+		Title:         "archi",
+		Description:   "this is an assignment",
+		Deadline:      time.Now(),
+		Year:          "1",
+		Groups:        []string{ uuid.New().String(),uuid.New().String()},
+		TeacherId:     teacher1.ID,
+		ModuleId:      uuid.New().String(),
 	}
 
 	jsonModule, _ := json.Marshal(globalAssignment)

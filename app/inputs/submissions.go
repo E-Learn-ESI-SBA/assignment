@@ -9,7 +9,7 @@ import (
 type NewSubmissionInput struct {
 	File       string    `json:"file"`
 	Assignment uuid.UUID       `json:"assignment_id"`
-	Student    uuid.UUID       `json:"student_id"`
+	Student    string       `json:"student_id"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }

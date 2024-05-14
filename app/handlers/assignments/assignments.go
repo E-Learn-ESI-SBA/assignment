@@ -21,8 +21,8 @@ func GetAssignments(db *sql.DB) gin.HandlerFunc {
 		moduleId := c.Query("module_id")
 
 		filter := interfaces.AssignmentFilter{
-			Teacher: &teacherId,
-			Module:  &moduleId,
+			TeacherId: &teacherId,
+			ModuleId:  &moduleId,
 		}
 
 		assignments, err = services.GetAssignments(c.Request.Context(), db, filter)
@@ -39,7 +39,6 @@ func CreateAssignment(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var assignment models.Assignment
 		user := c.MustGet("user").(*utils.UserDetails)
-		assignment.ID = user.ID
 		err := c.BindJSON(&assignment)
 
 		if err != nil {
@@ -65,22 +64,16 @@ func UpdateAssignment(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 		assignmentIdStr, errP := c.Params.Get("assignmentId")
-
 		if !errP {
 			c.JSON(400, gin.H{"error": "error when parsing assignment id"})
 			return
 		}
+
 		assignmentId, err := uuid.Parse(assignmentIdStr)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "error when parsing assignment id"})
 			return
 		}
-
-		if err != nil {
-			c.JSON(400, gin.H{"error": "error when parsing assignment id"})
-			return
-		}
-
 		err = services.UpdateAssignment(c.Request.Context(), db, assignmentId, editedAssignment)
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
