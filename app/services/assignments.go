@@ -3,13 +3,15 @@ package services
 import (
 	"context"
 	"database/sql"
-	"github.com/lib/pq"
 	"log"
 	"madaurus/dev/assignment/app/interfaces"
 	"madaurus/dev/assignment/app/models"
+
+	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
-func CreateAssignment(ctx context.Context, db *sql.DB, assignment models.Assignment, teacherId int) error {
+func CreateAssignment(ctx context.Context, db *sql.DB, assignment models.Assignment, teacherId uuid.UUID) error {
 	_, err := db.Exec("INSERT INTO assignments (title,description,deadline,promo,groups,module_id,teacher_id) VALUES ($1,$2,$3,$4,$5,$6,$7)",
 		assignment.Title, assignment.Description, assignment.Deadline, assignment.Promo, pq.Array(assignment.Groups), assignment.Module, teacherId)
 	if err != nil {
@@ -19,7 +21,7 @@ func CreateAssignment(ctx context.Context, db *sql.DB, assignment models.Assignm
 	return nil
 }
 
-func GetAssignmentByID(ctx context.Context, db *sql.DB, assignmentId int) (models.Assignment, error) {
+func GetAssignmentByID(ctx context.Context, db *sql.DB, assignmentId uuid.UUID) (models.Assignment, error) {
 	var assignment models.Assignment
 
 	err := db.QueryRow("SELECT * FROM assignments WHERE id = $1", assignmentId).Scan(assignment.ID, assignment.Title,
@@ -37,7 +39,7 @@ func GetAssignmentByID(ctx context.Context, db *sql.DB, assignmentId int) (model
 	return assignment, nil
 }
 
-func UpdateAssignment(ctx context.Context, db *sql.DB, assignmentId int, editedAssignment models.Assignment) error {
+func UpdateAssignment(ctx context.Context, db *sql.DB, assignmentId uuid.UUID, editedAssignment models.Assignment) error {
 	_, err := db.Exec("UPDATE assignments SET title = $1, description = $2, deadline = $3, promo = $4, groups = $5 WHERE id = $6",
 		editedAssignment.Title, editedAssignment.Description, editedAssignment.Deadline, editedAssignment.Promo,pq.Array(editedAssignment.Groups), assignmentId)
 	if err != nil {
@@ -47,7 +49,7 @@ func UpdateAssignment(ctx context.Context, db *sql.DB, assignmentId int, editedA
 	return nil
 }
 
-func DeleteAssignmentByID(ctx context.Context, db *sql.DB, assignmentID int) error {
+func DeleteAssignmentByID(ctx context.Context, db *sql.DB, assignmentID uuid.UUID) error {
 	_, err := db.Exec("DELETE FROM assignments WHERE id = $1", assignmentID)
 	if err != nil {
 		log.Printf("Error when deleting assignment with ID %d: %v", assignmentID, err)

@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func GetSubmissionsByAssignmentId(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var submissions []models.Submission
-		var assignmentId int
 		var err error
 
 		assignmentIDStr, errP := c.Params.Get("assignmentId")
@@ -25,7 +25,8 @@ func GetSubmissionsByAssignmentId(db *sql.DB) gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "Error when parsing assignmentId"})
 			return
 		}
-		assignmentId, err = strconv.Atoi(assignmentIDStr)
+
+		assignmentId, err := uuid.Parse(assignmentIDStr)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "Error when parsing assignmentId"})
 			return
@@ -46,13 +47,17 @@ func CreateSubmission(db *sql.DB) gin.HandlerFunc {
 		var submission inputs.NewSubmissionInput
 		user := c.MustGet("user").(*utils.UserDetails)
 		assignmentIdStr, errP := c.Params.Get("assignmentId")
+
 		if !errP {
 			c.JSON(400, gin.H{"error": "Error when parsing assignmentId"})
 		}
-		assignmentId, err := strconv.Atoi(assignmentIdStr)
+		
+		assignmentId, err := uuid.Parse(assignmentIdStr)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "Error when parsing assignmentId"})
+			return
 		}
+
 		submission.Student = user.ID
 		submission.Assignment = assignmentId
 		submission.CreatedAt = time.Now()
@@ -125,7 +130,6 @@ func GetSubmissionByID(db *sql.DB) gin.HandlerFunc {
 		c.JSON(200, gin.H{"message": submission})
 	}
 }
-
 
 func DeleteSubmissionByID(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {

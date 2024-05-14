@@ -6,9 +6,11 @@ import (
 	"log"
 	"madaurus/dev/assignment/app/inputs"
 	"madaurus/dev/assignment/app/models"
+
+	"github.com/google/uuid"
 )
 
-func GetSubmissionByAssignmentID(ctx context.Context, db *sql.DB, assignmentId int) ([]models.Submission, error) {
+func GetSubmissionByAssignmentID(ctx context.Context, db *sql.DB, assignmentId uuid.UUID) ([]models.Submission, error) {
 	var submissions []models.Submission
 
 	rows, err := db.Query("SELECT * FROM submissions WHERE assignment_id = $1", assignmentId)

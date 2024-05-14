@@ -3,15 +3,22 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
+	"log"
+	"madaurus/dev/assignment/app/shared"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type LightUser struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
 	Role     string `json:"role"`
-	ID       int    `json:"id"`
+	ID       uuid.UUID `json:"id"`
+	Avatar   string `json:"avatar"`
+	Group    string `json:"group"`
+	Year     string `json:"year"`
 }
 type UserDetails struct {
 	LightUser
@@ -29,29 +36,37 @@ func ParseJwt(signedtoken string, secretKey string) (*jwt.Token, error) {
 
 func ValidateToken(signedtoken string, secretKey string) (*UserDetails, error) {
 	var user UserDetails
+	log.Printf("Getting token .. %v", signedtoken)
 	token, err := ParseJwt(signedtoken, secretKey)
 	if err != nil {
-		return nil, errors.New("invalid Token")
+		log.Printf("Error in parsing token: %v", err.Error())
+		return nil, errors.New(shared.INVALID_TOKEN)
 	}
 	if !token.Valid {
-		return nil, errors.New("UNAUTHORIZED")
+		return nil, errors.New(shared.UNAUTHORIZED)
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 
 	if !ok {
-		return nil, errors.New("invalid Token")
+
+		log.Printf("Error in converting claims: %v", err.Error())
+
+		return nil, errors.New(shared.INVALID_TOKEN)
 
 	}
 
 	// Case: Token expired
 	expTime := time.Unix(int64(claims["exp"].(float64)), 0)
 	if expTime.Unix() < time.Now().Local().Unix() {
-		return nil, errors.New("expired Token")
+		return nil, errors.New(shared.EXPIRED_TOKEN)
 	}
 	user.Email = claims["email"].(string)
 	user.Username = claims["username"].(string)
 	user.Role = claims["role"].(string)
-	user.ID = int(claims["id"].(float64))
+	user.ID = claims["id"].(uuid.UUID)
+	user.Avatar = claims["avatar"].(string)
+	user.Group = claims["group"].(string)
+	user.Year = claims["year"].(string)
 	return &user, nil
 
 }
@@ -62,6 +77,9 @@ func GenerateToken(user LightUser, secretKey string) (string, error) {
 		"username": user.Username,
 		"role":     user.Role,
 		"id":       user.ID,
+		"avatar":   user.Avatar,
+		"group":    user.Group,
+		"year":     user.Year,
 	}
 	// add expiration time
 	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
@@ -78,14 +96,3 @@ expTime, _ := claims.GetExpirationTime()
 		}
 	}
 */
-func TestToken() (error, string) {
-	// Generate new token
-	token, err := GenerateToken(LightUser{
-		ID:       12,
-		Email:    "ameri.ayoub@gmail.com",
-		Username: "Ayoub",
-		Role:     "admin",
-	}, "A1B2C3D4E5F6G7H8I9J0K")
-
-	return err, token
-}
