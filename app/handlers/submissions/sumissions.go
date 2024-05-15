@@ -8,6 +8,7 @@ import (
 	"madaurus/dev/assignment/app/models"
 	"madaurus/dev/assignment/app/services"
 	"madaurus/dev/assignment/app/utils"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -46,35 +47,44 @@ func CreateSubmission(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var submission inputs.NewSubmissionInput
 		user := c.MustGet("user").(*utils.UserDetails)
-		assignmentIdStr, errP := c.Params.Get("assignmentId")
+		assignmentIDStr := c.Param("assignmentId")
 
-		if !errP {
-			c.JSON(400, gin.H{"error": "Error when parsing assignmentId"})
-		}
-		
-		assignmentId, err := uuid.Parse(assignmentIdStr)
+		assignmentID, err := uuid.Parse(assignmentIDStr)
 		if err != nil {
-			c.JSON(400, gin.H{"error": "Error when parsing assignmentId"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid assignment ID"})
+			return
+		}
+
+		if err := c.BindJSON(&submission); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse submission data"})
+			return
+		}
+
+		file, err := c.FormFile("file")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve file from request"})
+			return
+		}
+
+		dst := "uploads/submissions/" + file.Filename
+		if err := c.SaveUploadedFile(file, dst); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
 			return
 		}
 
 		submission.Student = user.ID
-		submission.Assignment = assignmentId
+		submission.Assignment = assignmentID
 		submission.CreatedAt = time.Now()
 		submission.UpdatedAt = time.Now()
-		err = c.BindJSON(&submission)
-
-		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
+		submission.File = dst 
 
 		err = services.CreateSubmission(c.Request.Context(), db, submission)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create submission"})
 			return
 		}
-		c.JSON(200, gin.H{"message": "Submission Created Successfully"})
+
+		c.JSON(http.StatusOK, gin.H{"message": "Submission Created Successfully"})
 	}
 }
 

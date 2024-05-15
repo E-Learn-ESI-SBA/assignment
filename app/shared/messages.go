@@ -15,6 +15,14 @@ const FORBIDDEN = "not allowed to perform this action"
 const INVALID_TOKEN = "Invalid Token"
 const INVALID_CREDENTIALS = "Invalid Credentials"
 
+// Assignment
+const ASSIGNMENT_CREATION_SUCCESS = "Assignment Created Successfully"
+const ASSIGNMENT_UPDATE_SUCCESS = "Assignment Updated Successfully"
+const ASSIGNMENT_DELETION_SUCCESS = "Assignment Deleted Successfully"
+const ASSIGNMENT_NOT_FOUND = "Assignment Not Found"
+const ASSIGNMENT_ALREADY_EXISTS = "Assignment Already Exists"
+const INVALID_ASSIGNMENT_DATA = "Invalid Assignment Data"
+
 // Creating File
 const CREATE_FILE = "File Created Successfully"
 const UNABLE_CREATE_FILE = "unable to create the file"

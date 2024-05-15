@@ -11,17 +11,17 @@ import (
 	"github.com/lib/pq"
 ) 
 
-func CreateAssignment(ctx context.Context, db *sql.DB, assignment models.Assignment, teacherId string) error {
+func CreateAssignment(ctx context.Context, db *sql.DB, assignment models.Assignment, teacherID string) error {
 	log.Printf("module id %v", assignment.ModuleId)
-	_, err := db.Exec("INSERT INTO assignments (title,description,deadline,year,groups,module_id,teacher_id) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-		assignment.Title, assignment.Description, assignment.Deadline, assignment.Year, pq.Array(assignment.Groups), assignment.ModuleId, teacherId)
+	_, err := db.Exec("INSERT INTO assignments (title,description,deadline,year,groups,module_id,teacher_id,files) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+		assignment.Title, assignment.Description, assignment.Deadline, assignment.Year, pq.Array(assignment.Groups), assignment.ModuleId, teacherID, pq.Array(assignment.Files))
 	if err != nil {
 		log.Printf("Error when creating assignments %v", err)
 		return err
 	}
 	return nil
 }
-
+ 
 func GetAssignmentByID(ctx context.Context, db *sql.DB, assignmentId uuid.UUID) (models.Assignment, error) {
 	var assignment models.Assignment
 
@@ -96,6 +96,26 @@ func GetAssignments(ctx context.Context, db *sql.DB, filter interfaces.Assignmen
 	}
 
 	return assignments, nil
+}
+
+
+
+func AddAssignmentFile(ctx context.Context, db *sql.DB, assignmentId uuid.UUID, linkFile string) (error) {
+	_, err := db.Exec("UPDATE assignments SET files = array_append(files, $1) WHERE id = $2", linkFile, assignmentId)
+	if err != nil {
+		log.Printf("Error updating assignments table with link file: %v", err)
+		return  err
+	}
+	return nil
+}
+
+func DeleteAssignmentFile(ctx context.Context, db *sql.DB, fileId string, assignmentId uuid.UUID) error {
+	_, err := db.Exec("UPDATE assignments SET files = array_remove(files, $1) WHERE id = $2", fileId, assignmentId)
+	if err != nil {
+		log.Printf("Error removing file link from assignments table: %v", err)
+		return err
+	}
+	return nil
 }
 
 // func GetAssignmentsByTeacherID(ctx context.Context, db *sql.DB, teacherId int) ([]models.Assignment, error) {

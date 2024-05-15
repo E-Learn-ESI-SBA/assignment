@@ -32,7 +32,7 @@ var teacher1 utils.LightUser = utils.LightUser{
 	Username: "mhammed",
 	Role:     "Teacher",
 	Email:    "f.mhammed@gmail.com",
-	ID:        uuid.New().String(),
+	ID:       uuid.New().String(),
 }
 
 var teacher2 utils.LightUser = utils.LightUser{
@@ -71,14 +71,14 @@ func TestCreateAssignment(t *testing.T) {
 	}
 
 	globalAssignment := models.Assignment{
-		ID:            uuid.New(),
-		Title:         "archi",
-		Description:   "this is an assignment",
-		Deadline:      time.Now(),
-		Year:          "1",
-		Groups:        []string{ uuid.New().String(),uuid.New().String()},
-		TeacherId:     teacher1.ID,
-		ModuleId:      uuid.New().String(),
+		ID:          uuid.New(),
+		Title:       "archi",
+		Description: "this is an assignment",
+		Deadline:    time.Now(),
+		Year:        "1",
+		Groups:      []string{uuid.New().String(), uuid.New().String()},
+		TeacherId:   teacher1.ID,
+		ModuleId:    uuid.New().String(),
 	}
 
 	jsonModule, _ := json.Marshal(globalAssignment)
@@ -145,7 +145,7 @@ func TestUpdateAssignment(t *testing.T) {
 	jsonAssignment, _ := json.Marshal(updatedAssignment)
 	req, _ := http.NewRequest(
 		"PUT",
-		"http://localhost:8080/assignments/" + globalAssignment.ID.String(),
+		"http://localhost:8080/assignments/"+globalAssignment.ID.String(),
 		bytes.NewReader(jsonAssignment),
 	)
 	req.Header.Set("Authorization", "Bearer "+teacher1Token)
