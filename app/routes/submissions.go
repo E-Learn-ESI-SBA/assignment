@@ -13,6 +13,7 @@ func SubmissionsRoute(c *gin.Engine, db *sql.DB) {
 	SubmissionsRoute.GET("", handlers.GetSubmissionsByAssignmentId(db))
 	SubmissionsRoute.GET(":submissionId", handlers.GetSubmissionByID(db))
 	SubmissionsRoute.POST("", handlers.CreateSubmission(db))
-	SubmissionsRoute.PUT(":submissionId", handlers.UpdateSubmission(db))
+	SubmissionsRoute.PUT(":submissionId", handlers.EvaluateSubmission(db))
+	// SubmissionsRoute.PUT(":submissionId", handlers.UpdateSubmission(db))
 	SubmissionsRoute.DELETE(":submissionId", handlers.DeleteSubmissionByID(db))
 }

@@ -15,9 +15,7 @@ func AssignmentsRoute(c *gin.Engine, db *sql.DB){
 	assignmentsRoute.POST("", handlers.CreateAssignment(db))
 	assignmentsRoute.PUT(":assignmentId", handlers.UpdateAssignment(db))
 	assignmentsRoute.DELETE(":assignmentId", handlers.DeleteAssignmentByID(db))
-	assignmentsRoute.GET("assignments/:assignmentId/files/:fileId", handlers.AddAssignmentFile(db))
-	assignmentsRoute.POST("assignments/:assignmentId/files", handlers.AddAssignmentFile(db))
-	assignmentsRoute.DELETE("assignments/:assignmentId/files/:fileId", handlers.DeleteAssignmentFile(db))
+
 	// assignmentsRoute.GET("/module/:moduleId", handlers.GetAssignmentsByModuleID(db))
 	// assignmentsRoute.GET("/teacher/:teacherId", handlers.GetAssignmentsByTeacherID(db))
 }

@@ -48,6 +48,7 @@ func main() {
 
 	routes.AssignmentsRoute(server, Db)
 	routes.SubmissionsRoute(server, Db)
+	routes.FilesRoute(server, Db)
 
 
 	// Set up GoMigrate

@@ -3,57 +3,58 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"madaurus/dev/assignment/app/interfaces"
 	"madaurus/dev/assignment/app/models"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
-) 
+)
 
-func CreateAssignment(ctx context.Context, db *sql.DB, assignment models.Assignment, teacherID string) error {
+func CreateAssignment(ctx context.Context, db *sql.DB, assignment models.Assignment) error {
 	log.Printf("module id %v", assignment.ModuleId)
-	_, err := db.Exec("INSERT INTO assignments (title,description,deadline,year,groups,module_id,teacher_id,files) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-		assignment.Title, assignment.Description, assignment.Deadline, assignment.Year, pq.Array(assignment.Groups), assignment.ModuleId, teacherID, pq.Array(assignment.Files))
+	fmt.Println(assignment.File)
+	fmt.Printf(assignment.File)
+	_, err := db.ExecContext(ctx, "INSERT INTO assignments (id, title, description, deadline, year, module_id, teacher_id, file) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+		assignment.ID, assignment.Title, assignment.Description, assignment.Deadline, assignment.Year, assignment.ModuleId, assignment.TeacherId, assignment.File)
 	if err != nil {
 		log.Printf("Error when creating assignments %v", err)
 		return err
 	}
 	return nil
 }
- 
-func GetAssignmentByID(ctx context.Context, db *sql.DB, assignmentId uuid.UUID) (models.Assignment, error) {
+func GetAssignmentByID(ctx context.Context, db *sql.DB, assignmentId uuid.UUID) (*models.Assignment, error) {
 	var assignment models.Assignment
 
-	err := db.QueryRow("SELECT * FROM assignments WHERE id = $1", assignmentId).Scan(assignment.ID, assignment.Title,
-		assignment.Description, assignment.Deadline,
-		assignment.Year, assignment.Groups, assignment.TeacherId,
-		assignment.ModuleId)
+	query := `SELECT id, title, description, file, deadline, year, teacher_id, module_id 
+	          FROM assignments 
+	          WHERE id = $1`
+	err := db.QueryRowContext(ctx, query, assignmentId).Scan(&assignment.ID, &assignment.Title, &assignment.Description, &assignment.File, &assignment.Deadline, &assignment.Year, &assignment.TeacherId, &assignment.ModuleId)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Printf("No assignment with id %d", assignmentId)
-			return assignment, nil
+			log.Printf("No assignment with id %s", assignmentId)
+			return nil, nil
 		}
-		log.Printf("Error geting assignment with id %d", assignmentId)
-		return assignment, err
+		log.Printf("Error getting assignment with id %s: %v", assignmentId, err)
+		return nil, err
 	}
-	return assignment, nil
+	return &assignment, nil
 }
 
 func UpdateAssignment(ctx context.Context, db *sql.DB, assignmentId uuid.UUID, editedAssignment models.Assignment) error {
-	_, err := db.Exec("UPDATE assignments SET title = $1, description = $2, deadline = $3, year = $4, groups = $5 WHERE id = $6",
-		editedAssignment.Title, editedAssignment.Description, editedAssignment.Deadline, editedAssignment.Year, pq.Array(editedAssignment.Groups), assignmentId)
+	_, err := db.ExecContext(ctx, "UPDATE assignments SET title = $1, description = $2, deadline = $3, year = $4 WHERE id = $5",
+		editedAssignment.Title, editedAssignment.Description, editedAssignment.Deadline, editedAssignment.Year, assignmentId)
 	if err != nil {
-		log.Printf("Error when updating assignment with ID %d: %v", assignmentId, err)
+		log.Printf("Error when updating assignment with ID %s: %v", assignmentId, err)
 		return err
 	}
 	return nil
 }
 
 func DeleteAssignmentByID(ctx context.Context, db *sql.DB, assignmentID uuid.UUID) error {
-	_, err := db.Exec("DELETE FROM assignments WHERE id = $1", assignmentID)
+	_, err := db.ExecContext(ctx, "DELETE FROM assignments WHERE id = $1", assignmentID)
 	if err != nil {
-		log.Printf("Error when deleting assignment with ID %d: %v", assignmentID, err)
+		log.Printf("Error when deleting assignment with ID %s: %v", assignmentID, err)
 		return err
 	}
 	return nil
@@ -63,31 +64,34 @@ func GetAssignments(ctx context.Context, db *sql.DB, filter interfaces.Assignmen
 	var assignments []models.Assignment
 	var query string
 	var args []interface{}
-
-	query = "SELECT * FROM assignments WHERE 1=1"
-	if filter.ModuleId != nil {
+	log.Print("zz")
+	log.Print(*filter.ModuleId)
+	log.Print("zz")
+	query = "SELECT id, title, description, file, deadline, year, teacher_id, module_id FROM assignments WHERE 1=1"
+	if *filter.ModuleId != "" {
 		query += " AND module_id = $1"
-		args = append(args, filter.ModuleId)
+		args = append(args, *filter.ModuleId)
 	}
-	if filter.TeacherId != nil {
+	if *filter.TeacherId != "" {
 		query += " AND teacher_id = $2"
-		args = append(args, filter.TeacherId)
+		args = append(args, *filter.TeacherId)
 	}
-	rows, err := db.Query(query, args...)
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
-		log.Printf("Error escuting query %v", err)
+		log.Printf("Error executing query: %v", err)
 		return assignments, err
 	}
 
 	defer rows.Close()
-
 	for rows.Next() {
 		var assignment models.Assignment
-		if err := rows.Scan(assignment.ID, assignment.Title, assignment.Description, assignment.Deadline, assignment.Year, assignment.Groups, assignment.TeacherId, assignment.ModuleId); err != nil {
+		if err := rows.Scan(&assignment.ID, &assignment.Title, &assignment.Description, &assignment.File, &assignment.Deadline, &assignment.Year, &assignment.TeacherId, &assignment.ModuleId); err != nil {
 			log.Printf("Error scanning row: %v", err)
 			return assignments, err
 		}
 		assignments = append(assignments, assignment)
+		fmt.Print("\n")
+		fmt.Print(assignment.File)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -96,26 +100,6 @@ func GetAssignments(ctx context.Context, db *sql.DB, filter interfaces.Assignmen
 	}
 
 	return assignments, nil
-}
-
-
-
-func AddAssignmentFile(ctx context.Context, db *sql.DB, assignmentId uuid.UUID, linkFile string) (error) {
-	_, err := db.Exec("UPDATE assignments SET files = array_append(files, $1) WHERE id = $2", linkFile, assignmentId)
-	if err != nil {
-		log.Printf("Error updating assignments table with link file: %v", err)
-		return  err
-	}
-	return nil
-}
-
-func DeleteAssignmentFile(ctx context.Context, db *sql.DB, fileId string, assignmentId uuid.UUID) error {
-	_, err := db.Exec("UPDATE assignments SET files = array_remove(files, $1) WHERE id = $2", fileId, assignmentId)
-	if err != nil {
-		log.Printf("Error removing file link from assignments table: %v", err)
-		return err
-	}
-	return nil
 }
 
 // func GetAssignmentsByTeacherID(ctx context.Context, db *sql.DB, teacherId int) ([]models.Assignment, error) {

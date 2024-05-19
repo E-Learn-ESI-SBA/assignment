@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"log"
-	"madaurus/dev/assignment/app/inputs"
 	"madaurus/dev/assignment/app/models"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -15,15 +15,47 @@ func GetSubmissionByAssignmentID(ctx context.Context, db *sql.DB, assignmentId u
 
 	rows, err := db.Query("SELECT * FROM submissions WHERE assignment_id = $1", assignmentId)
 	if err != nil {
-		log.Printf("Error geting submissions with assignmentId %d", assignmentId)
+		log.Printf("Error getting submissions with assignmentId %s: %v", assignmentId, err)
 		return submissions, err
 	}
+	defer rows.Close()
+
 	for rows.Next() {
 		var submission models.Submission
-		if err = rows.Scan(&submission.ID, &submission.AssignmentId, &submission.Feedback, &submission.File, &submission.Grade, &submission.StudentId, &submission.CreatedAt , &submission.UpdatedAt, &submission.EvaluatedAt); err != nil {
+		var feedback, evaluatedAt sql.NullString 
+
+		if err := rows.Scan(
+			&submission.ID,
+			&submission.File,
+			&submission.Grade,
+			&feedback,
+			&submission.AssignmentId,
+			&submission.StudentId,
+			&submission.CreatedAt,
+			&submission.UpdatedAt,
+			&evaluatedAt,
+		); err != nil {
 			log.Printf("Error scanning row: %v", err)
 			return submissions, err
 		}
+
+		if feedback.Valid {
+			submission.Feedback = feedback.String
+		} else {
+			submission.Feedback = "" 
+		}
+
+		if evaluatedAt.Valid {
+			evaluatedTime, err := time.Parse(time.RFC3339, evaluatedAt.String)
+			if err != nil {
+				log.Printf("Error parsing EvaluatedAt: %v", err)
+				return submissions, err
+			}
+			submission.EvaluatedAt = &evaluatedTime
+		} else {
+			submission.EvaluatedAt = &time.Time{} 
+		}
+
 		submissions = append(submissions, submission)
 	}
 
@@ -33,13 +65,12 @@ func GetSubmissionByAssignmentID(ctx context.Context, db *sql.DB, assignmentId u
 	}
 
 	return submissions, nil
-	
 }
 
-
-func CreateSubmission(ctx context.Context, db *sql.DB, submission inputs.NewSubmissionInput) error {
+func CreateSubmission(ctx context.Context, db *sql.DB, submission models.Submission) error {
+	log.Println("assignment id", submission.AssignmentId)
 	_, err := db.Exec("INSERT INTO submissions (file, student_id, assignment_id, created_at, updated_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-		submission.File, submission.Student, submission.Assignment)
+		submission.File, submission.StudentId, submission.AssignmentId)
 	if err != nil {
 		log.Printf("Error when creating submission: %v", err)
 		return err
@@ -57,7 +88,7 @@ func UpdateSubmission(ctx context.Context, db *sql.DB, submissionID int, editedS
 	return nil
 }
 
-func DeleteSubmissionByID(ctx context.Context, db *sql.DB, submissionID int) error {
+func DeleteSubmissionByID(ctx context.Context, db *sql.DB, submissionID uuid.UUID) error {
 	_, err := db.Exec("DELETE FROM submissions WHERE id = $1", submissionID)
 	if err != nil {
 		log.Printf("Error when deleting submission with ID %d: %v", submissionID, err)
@@ -66,32 +97,47 @@ func DeleteSubmissionByID(ctx context.Context, db *sql.DB, submissionID int) err
 	return nil
 }
 
-
-func EvaluateSubmission(ctx context.Context, db *sql.DB,evaluatedSubmission models.Submission,submissionID int) error {
+func EvaluateSubmission(ctx context.Context, db *sql.DB, evaluatedSubmission models.Submission, submissionID uuid.UUID) error {
 	_, err := db.Exec("UPDATE submissions SET grade = $1, feedback = $2 WHERE id = $3",
-	evaluatedSubmission.Grade, evaluatedSubmission.Feedback, submissionID)
+		evaluatedSubmission.Grade, evaluatedSubmission.Feedback, submissionID)
 	if err != nil {
 		log.Printf("Error when evaluating submission with ID %d: %v", submissionID, err)
 		return err
 	}
 	return nil
 }
-
-
-
-func GetSubmissionByID(ctx context.Context, db *sql.DB, submissionId int) (models.Submission, error) {
+func GetSubmissionByID(ctx context.Context, db *sql.DB, submissionID uuid.UUID) (*models.Submission, error) {
 	var submission models.Submission
+	var evaluatedAt sql.NullTime
+	var feedback sql.NullString
 
-	err := db.QueryRow("SELECT * FROM submissions WHERE id = $1", submissionId).Scan(submission.ID, submission.File,
-		submission.Grade, submission.Feedback, submission.StudentId, submission.CreatedAt,
-		submission.UpdatedAt, submission.EvaluatedAt)
+	err := db.QueryRow("SELECT * FROM submissions WHERE id = $1", submissionID.String()).Scan(
+		&submission.ID,
+		&submission.File,
+		&submission.Grade,
+		&feedback, 
+		&submission.AssignmentId,
+		&submission.StudentId,
+		&submission.CreatedAt,
+		&submission.UpdatedAt,
+		&evaluatedAt,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Printf("No submission with id %d", submissionId)
-			return submission, nil
+			log.Printf("No submission with id %s", submissionID)
+			return nil, nil
 		}
-		log.Printf("Error geting submission with id %d", submissionId)
-		return submission, err
+		log.Printf("Error getting submission with id %s: %v", submissionID, err)
+		return nil, err
 	}
-	return submission, nil
+
+	if feedback.Valid {
+		submission.Feedback = feedback.String
+	}
+
+	if evaluatedAt.Valid {
+		submission.EvaluatedAt = &evaluatedAt.Time
+	}
+
+	return &submission, nil
 }
