@@ -2,13 +2,16 @@ package handlers
 
 import (
 	"database/sql"
-	"errors"
-	"fmt"
-	"madaurus/dev/assignment/app/inputs"
+	"io"
+	"log"
+
+	// "log"
 	"madaurus/dev/assignment/app/models"
 	"madaurus/dev/assignment/app/services"
 	"madaurus/dev/assignment/app/utils"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -16,36 +19,11 @@ import (
 	"github.com/google/uuid"
 )
 
-func GetSubmissionsByAssignmentId(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var submissions []models.Submission
-		var err error
-
-		assignmentIDStr, errP := c.Params.Get("assignmentId")
-		if !errP {
-			c.JSON(400, gin.H{"error": "Error when parsing assignmentId"})
-			return
-		}
-
-		assignmentId, err := uuid.Parse(assignmentIDStr)
-		if err != nil {
-			c.JSON(400, gin.H{"error": "Error when parsing assignmentId"})
-			return
-		}
-
-		submissions, err = services.GetSubmissionByAssignmentID(c.Request.Context(), db, assignmentId)
-		if err != nil {
-			c.JSON(400, gin.H{"error": "Something Went Wrong"})
-			return
-		}
-		c.JSON(200, gin.H{"message": submissions})
-
-	}
-}
-
 func CreateSubmission(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var submission inputs.NewSubmissionInput
+		id := uuid.New().String()
+		var filePath string
+
 		user := c.MustGet("user").(*utils.UserDetails)
 		assignmentIDStr := c.Param("assignmentId")
 
@@ -55,28 +33,56 @@ func CreateSubmission(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		if err := c.BindJSON(&submission); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse submission data"})
+		err = c.Request.ParseMultipartForm(10 << 20) // 10 MB
+		if err != nil && err != http.ErrNotMultipart {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse multipart form"})
 			return
 		}
 
-		file, err := c.FormFile("file")
+		file, _, err := c.Request.FormFile("file")
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve file from request"})
-			return
+			filePath = ""
+		} else {
+			defer file.Close()
+
+			// save the file to fs
+			fileDir := "./uploads"
+			if _, err := os.Stat(fileDir); os.IsNotExist(err) {
+				err = os.Mkdir(fileDir, os.ModePerm)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create file directory"})
+					return
+				}
+			}
+			filePath = filepath.Join(fileDir, id)
+			out, err := os.Create(filePath)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create file"})
+				return
+			}
+			defer out.Close()
+
+			_, err = io.Copy(out, file)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+				return
+			}
 		}
 
-		dst := "uploads/submissions/" + file.Filename
-		if err := c.SaveUploadedFile(file, dst); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
-			return
-		}
-
-		submission.Student = user.ID
-		submission.Assignment = assignmentID
+		var submission models.Submission
+		submission.StudentId = user.ID
+		submission.AssignmentId = assignmentID
 		submission.CreatedAt = time.Now()
 		submission.UpdatedAt = time.Now()
-		submission.File = dst 
+		submission.File = filePath // if no file uploaded -> File = ""
+		// err = c.ShouldBindJSON(&submission)
+		// if err != nil {
+		// 	log.Println(err)
+		// 	c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse submission data"})
+		// 	return
+		// }
+
+	
 
 		err = services.CreateSubmission(c.Request.Context(), db, submission)
 		if err != nil {
@@ -84,81 +90,139 @@ func CreateSubmission(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Submission Created Successfully"})
+		c.JSON(http.StatusCreated, gin.H{"message": "Submission Created Successfully"})
 	}
 }
+
 
 func UpdateSubmission(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var editedSubmission models.Submission
 		err := c.BindJSON(&editedSubmission)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		submissionIdStr, errP := c.Params.Get("submissionId")
 
-		if !errP {
-			c.JSON(400, gin.H{"error": "error when parsing submission id"})
+		submissionIdStr, exists := c.Params.Get("submissionId")
+		if !exists {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing submission ID"})
 			return
 		}
 
 		submissionId, err := strconv.Atoi(submissionIdStr)
 		if err != nil {
-			c.JSON(400, gin.H{"error": "error when parsing submission id"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid submission ID format"})
 			return
 		}
 
 		err = services.UpdateSubmission(c.Request.Context(), db, submissionId, editedSubmission)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update submission"})
 			return
 		}
-		c.JSON(200, gin.H{"message": "Submission Updated Successfully"})
+
+		c.JSON(http.StatusOK, gin.H{"message": "Submission Updated Successfully"})
+	}
+}
+
+func GetSubmissionsByAssignmentId(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var submissions []models.Submission
+
+		assignmentIDStr, exists := c.Params.Get("assignmentId")
+		if !exists {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing assignment ID"})
+			return
+		}
+
+		assignmentId, err := uuid.Parse(assignmentIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid assignment ID format"})
+			return
+		}
+
+		submissions, err = services.GetSubmissionByAssignmentID(c.Request.Context(), db, assignmentId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve submissions"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"submissions": submissions})
 	}
 }
 
 func GetSubmissionByID(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		submissionIdStr, errr := c.Params.Get("submissionId")
-		fmt.Println(submissionIdStr)
-		if !errr {
-			c.JSON(400, gin.H{"error": "Error when parsig id"})
+		submissionIdStr, exists := c.Params.Get("submissionId")
+		if !exists {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing submission ID"})
 			return
 		}
 
-		submissionId, errP := strconv.Atoi(submissionIdStr)
-		if errP != nil {
-			c.JSON(400, gin.H{"error": errors.New("id is not valid")})
+		submissionId, err := uuid.Parse(submissionIdStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid submission ID format"})
 			return
 		}
 		submission, err := services.GetSubmissionByID(c.Request.Context(), db, submissionId)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve submission"})
 			return
 		}
-		c.JSON(200, gin.H{"message": submission})
+		if submission == nil{
+			c.JSON(http.StatusNotFound, gin.H{"error": "Submission not found"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"submission": submission})
 	}
 }
 
 func DeleteSubmissionByID(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		submissionIdStr, errr := c.Params.Get("submissionId")
-		fmt.Println(submissionIdStr)
-		if !errr {
-			c.JSON(400, gin.H{"error": "Error when parsig id"})
+		submissionIdStr, exists := c.Params.Get("submissionId")
+		if !exists {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing submission ID"})
 			return
 		}
-		submissionId, errP := strconv.Atoi(submissionIdStr)
-		if errP != nil {
-			c.JSON(400, gin.H{"error": errors.New("id is not valid")})
-			return
-		}
-		err := services.DeleteSubmissionByID(c.Request.Context(), db, submissionId)
+
+		submissionId, err := uuid.Parse(submissionIdStr)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid submission ID format"})
 			return
 		}
-		c.JSON(200, gin.H{"message": "Submission Deleted Successfully"})
+
+		err = services.DeleteSubmissionByID(c.Request.Context(), db, submissionId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete submission"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Submission Deleted Successfully"})
+	}
+}
+
+func EvaluateSubmission(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var evaluatedSubmission models.Submission
+		submissionIDStr := c.Param("submissionId")
+
+		submissionId, err := uuid.Parse(submissionIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid submission ID format"})
+			return
+		}
+
+		if err := c.BindJSON(&evaluatedSubmission); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse submission data"})
+			return
+		}
+
+		err = services.EvaluateSubmission(c.Request.Context(), db, evaluatedSubmission, submissionId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to evaluate submission"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Submission Evaluated Successfully"})
 	}
 }

@@ -3,11 +3,16 @@ package handlers
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
 	"madaurus/dev/assignment/app/interfaces"
 	"madaurus/dev/assignment/app/models"
 	"madaurus/dev/assignment/app/services"
+	"madaurus/dev/assignment/app/shared"
 	"madaurus/dev/assignment/app/utils"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -18,7 +23,6 @@ func GetAssignments(db *sql.DB) gin.HandlerFunc {
 		var assignments []models.Assignment
 		var err error
 
-	
 		teacherId := c.Query("teacher_id")
 		moduleId := c.Query("module_id")
 
@@ -38,22 +42,72 @@ func GetAssignments(db *sql.DB) gin.HandlerFunc {
 }
 
 func CreateAssignment(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(g *gin.Context) {
+		id := uuid.New().String()
+		value, exists := g.Get("user")
+		if !exists {
+			g.JSON(http.StatusInternalServerError, gin.H{"message": shared.UNAUTHORIZED})
+			return
+		}
+		user := value.(*utils.UserDetails)
+
+		err := g.Request.ParseMultipartForm(10 << 20) // 10 MB
+		if err != nil && err != http.ErrNotMultipart {
+			g.JSON(http.StatusBadRequest, gin.H{"message": shared.FILE_TOO_LARGE})
+			return
+		}
+
+		var filePath string
+		file, _, err := g.Request.FormFile("file")
+		if err != nil {
+			filePath = ""
+		} else {
+			defer file.Close()
+
+			// save the file to fs
+			fileDir := "./uploads"
+			if _, err := os.Stat(fileDir); os.IsNotExist(err) {
+				err = os.Mkdir(fileDir, os.ModePerm)
+				if err != nil {
+					g.JSON(http.StatusInternalServerError, gin.H{"message": shared.FILE_NOT_CREATED})
+					return
+				}
+			}
+			filePath = filepath.Join(fileDir, id)
+			out, err := os.Create(filePath)
+			if err != nil {
+				g.JSON(http.StatusInternalServerError, gin.H{"message": shared.FILE_NOT_CREATED})
+				return
+			}
+			defer out.Close()
+
+			_, err = io.Copy(out, file)
+			if err != nil {
+				g.JSON(http.StatusInternalServerError, gin.H{"message": shared.FILE_NOT_CREATED})
+				return
+			}
+		}
+
 		var assignment models.Assignment
-		user := c.MustGet("user").(*utils.UserDetails)
-		err := c.BindJSON(&assignment)
-
+		err = g.ShouldBind(&assignment)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			log.Printf("Error binding assignment: %v", err.Error())
+			g.JSON(http.StatusNotAcceptable, gin.H{"message": shared.UNABLE_TO_PARSE})
 			return
 		}
 
-		err = services.CreateAssignment(c.Request.Context(), db, assignment, user.ID)
+		assignment.ID = uuid.New()
+		assignment.File = id // if no file uploaded -> file = empty
+		assignment.TeacherId = user.ID
+
+		err = services.CreateAssignment(g.Request.Context(), db, assignment)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			log.Printf("Error creating assignment: %v", err.Error())
+			g.JSON(http.StatusBadRequest, gin.H{"message": "Assignment not created"})
 			return
 		}
-		c.JSON(200, gin.H{"message": "Assignment Created Successfully"})
+
+		g.JSON(http.StatusCreated, gin.H{"message": "Assignment Created Successfully"})
 	}
 }
 
@@ -65,22 +119,25 @@ func UpdateAssignment(db *sql.DB) gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-		assignmentIdStr, errP := c.Params.Get("assignmentId")
-		if !errP {
-			c.JSON(400, gin.H{"error": "error when parsing assignment id"})
+
+		assignmentIDStr, exists := c.Params.Get("assignmentId")
+		if !exists {
+			c.JSON(400, gin.H{"error": "error when parsing assignment ID"})
 			return
 		}
 
-		assignmentId, err := uuid.Parse(assignmentIdStr)
+		assignmentID, err := uuid.Parse(assignmentIDStr)
 		if err != nil {
-			c.JSON(400, gin.H{"error": "error when parsing assignment id"})
+			c.JSON(400, gin.H{"error": "error when parsing assignment ID"})
 			return
 		}
-		err = services.UpdateAssignment(c.Request.Context(), db, assignmentId, editedAssignment)
+
+		err = services.UpdateAssignment(c.Request.Context(), db, assignmentID, editedAssignment)
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
+
 		c.JSON(200, gin.H{"message": "Assignment Updated Successfully"})
 	}
 }
@@ -100,6 +157,10 @@ func GetAssignmentByID(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 		assignment, err := services.GetAssignmentByID(c.Request.Context(), db, assignmentId)
+		if assignment == nil {
+			c.JSON(404, gin.H{"error": shared.ASSIGNMENT_NOT_FOUND})
+			return
+		}
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
@@ -107,69 +168,6 @@ func GetAssignmentByID(db *sql.DB) gin.HandlerFunc {
 		c.JSON(200, gin.H{"message": assignment})
 	}
 }
-
-
-func AddAssignmentFile(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		file, err := c.FormFile("file")
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve file from request"})
-			return
-		}
-
-		dst := "uploads/" + file.Filename
-		if err := c.SaveUploadedFile(file, dst); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
-			return
-		}
-
-		assignmentIDStr := c.Param("assignmentId")
-		assignmentID, err := uuid.Parse(assignmentIDStr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid assignment ID"})
-			return
-		}
-
-		err = services.AddAssignmentFile(c.Request.Context(), db, assignmentID, dst)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update database with file link"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "File uploaded and assignment updated successfully"})
-	}
-}
-
-func DeleteAssignmentFile(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		assignmentIDStr := c.Param("assignmentId")
-		fileId := c.Param("fileId")
-		assignmentID, err := uuid.Parse(assignmentIDStr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid assignment ID"})
-			return
-		}
-
-		err = services.DeleteAssignmentFile(c.Request.Context(), db, fileId, assignmentID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete assignment file"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "File deleted successfully"})
-	}
-}
-
-func GetAssignmentFile(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		basePath := "uploads/"       
-		fileID := c.Param("fileId") 
-
-		filePath := basePath + fileID
-		c.File(filePath)
-	}
-}
-
 
 // func GetAssignmentsByTeacherID(db *sql.DB) gin.HandlerFunc {
 // 	return func(c *gin.Context) {
@@ -224,7 +222,7 @@ func DeleteAssignmentByID(db *sql.DB) gin.HandlerFunc {
 		}
 
 		assignmentId, err := uuid.Parse(assignmentIdStr)
-										
+
 		if err != nil {
 			c.JSON(400, gin.H{"error": "error when parsing assignment id"})
 			return

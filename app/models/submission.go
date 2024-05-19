@@ -15,5 +15,5 @@ type Submission struct {
 	StudentId    string       	    `json:"student_id"`
 	CreatedAt    time.Time 			`json:"created_at"`
 	UpdatedAt    time.Time 			`json:"updated_at"`
-	EvaluatedAt  time.Time 			`json:"evaluated_at"`
+	EvaluatedAt  *time.Time 			`json:"evaluated_at,omitempty"`
 }
