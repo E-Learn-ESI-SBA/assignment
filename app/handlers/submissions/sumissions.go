@@ -74,15 +74,13 @@ func CreateSubmission(db *sql.DB) gin.HandlerFunc {
 		submission.AssignmentId = assignmentID
 		submission.CreatedAt = time.Now()
 		submission.UpdatedAt = time.Now()
-		submission.File = filePath // if no file uploaded -> File = ""
+		submission.File = id // if no file uploaded -> File = ""
 		// err = c.ShouldBindJSON(&submission)
 		// if err != nil {
 		// 	log.Println(err)
 		// 	c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse submission data"})
 		// 	return
 		// }
-
-	
 
 		err = services.CreateSubmission(c.Request.Context(), db, submission)
 		if err != nil {
@@ -93,7 +91,6 @@ func CreateSubmission(db *sql.DB) gin.HandlerFunc {
 		c.JSON(http.StatusCreated, gin.H{"message": "Submission Created Successfully"})
 	}
 }
-
 
 func UpdateSubmission(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -169,7 +166,7 @@ func GetSubmissionByID(db *sql.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve submission"})
 			return
 		}
-		if submission == nil{
+		if submission == nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Submission not found"})
 			return
 		}
