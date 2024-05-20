@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/knadh/koanf"
 
@@ -36,7 +38,13 @@ func ConnectDatabse(k *koanf.Koanf) {
 func main() {
 
 	k := shared.GetSecrets()
-
+	configCors := cors.Config{
+		AllowAllOrigins: true,
+		AllowMethods:    []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
+		AllowFiles:      true,
+		AllowHeaders:    []string{"Origin", "Content-Length", "Content-Type", "Authorization", "X-CSRF-Token", "hx-request", "hx-current-url"},
+		MaxAge:          12 * time.Hour,
+	}
 	// db connection
 	ConnectDatabse(k)
 
@@ -45,7 +53,8 @@ func main() {
 	server.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "Welcome to madaurus assignments service"})
 	})
-
+	
+	server.Use(cors.New(configCors))
 	routes.AssignmentsRoute(server, Db)
 	routes.SubmissionsRoute(server, Db)
 	routes.FilesRoute(server, Db)
