@@ -2,7 +2,7 @@ FROM golang:alpine3.19
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
-# RUN go install -tags 'popstgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 COPY . .
 RUN go build -o main .
 RUN chmod +x main
