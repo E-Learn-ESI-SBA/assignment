@@ -7,14 +7,12 @@ import (
 	"log"
 	"madaurus/dev/assignment/app/interfaces"
 	"madaurus/dev/assignment/app/models"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 func CreateAssignment(ctx context.Context, db *sql.DB, assignment models.Assignment) error {
-	log.Printf("module id %v", assignment.ModuleId)
-	fmt.Println(assignment.File)
-	fmt.Printf(assignment.File)
 	_, err := db.ExecContext(ctx, "INSERT INTO assignments (id, title, description, deadline, year, module_id, teacher_id, file) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
 		assignment.ID, assignment.Title, assignment.Description, assignment.Deadline, assignment.Year, assignment.ModuleId, assignment.TeacherId, assignment.File)
 	if err != nil {
@@ -23,6 +21,7 @@ func CreateAssignment(ctx context.Context, db *sql.DB, assignment models.Assignm
 	}
 	return nil
 }
+
 func GetAssignmentByID(ctx context.Context, db *sql.DB, assignmentId uuid.UUID) (*models.Assignment, error) {
 	var assignment models.Assignment
 
@@ -38,6 +37,9 @@ func GetAssignmentByID(ctx context.Context, db *sql.DB, assignmentId uuid.UUID) 
 		log.Printf("Error getting assignment with id %s: %v", assignmentId, err)
 		return nil, err
 	}
+	if assignment.Deadline.IsZero() {
+        assignment.Deadline = time.Time{} 
+    }
 	return &assignment, nil
 }
 
