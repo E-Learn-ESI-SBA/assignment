@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS submissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     file VARCHAR(255),
     grade FLOAT DEFAULT 0,
-    feedback TEXT DEFAULT,
+    feedback TEXT DEFAULT '',
     assignment_id UUID,
     student_id VARCHAR,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
