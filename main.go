@@ -9,12 +9,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/knadh/koanf"
-
-	"madaurus/dev/assignment/app/routes"
-	"madaurus/dev/assignment/app/shared"
-
 	_ "github.com/lib/pq"
+	"madaurus/dev/assignment/app/routes"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -23,8 +19,8 @@ import (
 
 var Db *sql.DB
 
-func ConnectDatabse(k *koanf.Koanf) {
-	psqlSetup := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable", k.String("HOST"), k.Int("PORT"), k.String("USER"), k.String("DB_NAME"), k.String("PASSWORD"))
+func ConnectDatabse() {
+	psqlSetup := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable", os.Getenv("HOST"), os.Getenv("PORT"), os.Getenv("USER"), os.Getenv("DB_NAME"), os.Getenv("PASSWORD"))
 	db, errSql := sql.Open("postgres", psqlSetup)
 	if errSql != nil {
 		log.Fatal("err when conneting to db", errSql)
@@ -37,7 +33,6 @@ func ConnectDatabse(k *koanf.Koanf) {
 
 func main() {
 
-	k := shared.GetSecrets()
 	configCors := cors.Config{
 		AllowAllOrigins: true,
 		AllowMethods:    []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
@@ -46,19 +41,18 @@ func main() {
 		MaxAge:          12 * time.Hour,
 	}
 	// db connection
-	ConnectDatabse(k)
+	ConnectDatabse()
 
 	server := gin.New()
 
 	server.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "Welcome to madaurus assignments service"})
 	})
-	
+
 	server.Use(cors.New(configCors))
 	routes.AssignmentsRoute(server, Db)
 	routes.SubmissionsRoute(server, Db)
 	routes.FilesRoute(server, Db)
-
 
 	// Set up GoMigrate
 	driver, err := postgres.WithInstance(Db, &postgres.Config{})
@@ -70,7 +64,6 @@ func main() {
 		log.Fatal(err)
 	}
 	m.Up()
-	err = os.Setenv("JWT_SECRET", k.String("JWT_SECRET"))
 	if err != nil {
 		log.Fatal("JWT_SECRET not set")
 
