@@ -24,15 +24,42 @@ func GetAssignments(db *sql.DB) gin.HandlerFunc {
 		var assignments []models.Assignment
 		var err error
 
+		value, exists := c.Get("user")
+		if !exists {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": shared.UNAUTHORIZED})
+			return
+		}
+		user, ok := value.(*utils.UserDetails)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to parse user details"})
+			return
+		}
+
 		teacherId := c.Query("teacher_id")
 		moduleId := c.Query("module_id")
-
+		year := c.Query("year")
+	
 		filter := interfaces.AssignmentFilter{
 			TeacherId: &teacherId,
 			ModuleId:  &moduleId,
+			Year:      &year,	
 		}
+		// if the user is student then filter by his year, 
+		// elif the user is teacher then filter by his id,
+		//  else return all of them for the admin 
+		var filterId = "";
+		var filterBy = "None";
 
-		assignments, err = services.GetAssignments(c.Request.Context(), db, filter)
+		if user.Role == "student" {
+			filterId = user.Year
+			filterBy = "Year"
+		} else {
+			if user.Role == "teacher" {
+			filterId = user.ID
+			filterBy = "Teacher"
+		}
+	}
+		assignments, err = services.GetAssignments(c.Request.Context(), db, filter, filterId, filterBy)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "error, something went wrong"})
 			return
