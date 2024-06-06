@@ -1,0 +1,27 @@
+name: Testing & Building  assignments Service Go (Gin)
+
+on:
+  release:
+    types:
+      - created
+      - edited
+env:
+  ACR_RESOURCE_GROUP: madaurus
+  AZURE_CONTAINER_REGISTRY: madaurus
+  IMAGE_NAME: assignments
+  DOCKER_TOKEN: dckr_pat_yvsyLXV6TNNj6a4R_wR44syesmU
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    #  needs:
+    #  - test
+    steps:
+      - uses: actions/checkout@v3
+      - name: Login To Azure ACR
+        run: docker login   -u madaurus -p ${{env.DOCKER_TOKEN}}
+      - name: Build and push image to ACR
+        run: |
+          ls ; docker build -t  madaurus/${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }} .
+      - name: Push the Image
+        run: |
+          docker push madaurus/${{ env.IMAGE_NAME}}:${{ github.event.release.tag_name }}
