@@ -198,6 +198,13 @@ func GetAssignmentByID(db *sql.DB) gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "Error when parsig id"})
 			return
 		}
+		user := c.MustGet("user").(*utils.UserDetails)
+		fmt.Println("assignmet")
+		fmt.Println(user.ID)
+		
+
+
+
 
 		assignmentId, err := uuid.Parse(assignmentIdStr)
 		if err != nil {

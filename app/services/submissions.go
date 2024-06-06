@@ -10,10 +10,16 @@ import (
 	"github.com/google/uuid"
 )
 
-func GetSubmissionByAssignmentID(ctx context.Context, db *sql.DB, assignmentId uuid.UUID) ([]models.Submission, error) {
+func GetSubmissionByAssignmentID(ctx context.Context, db *sql.DB, assignmentId uuid.UUID, studentId string) ([]models.Submission, error) {
 	var submissions []models.Submission
-
-	rows, err := db.Query("SELECT * FROM submissions WHERE assignment_id = $1", assignmentId)
+	var rows *sql.Rows
+	var err error
+	
+	if studentId != ""{
+		    rows, err = db.Query("SELECT * FROM submissions WHERE assignment_id = $1 AND student_id = $2", assignmentId, studentId)
+	} else {
+		rows, err = db.Query("SELECT * FROM submissions WHERE assignment_id = $1", assignmentId)
+	}
 	if err != nil {
 		log.Printf("Error getting submissions with assignmentId %s: %v", assignmentId, err)
 		return submissions, err
