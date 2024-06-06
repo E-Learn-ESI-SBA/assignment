@@ -21,7 +21,7 @@ import (
 
 func CreateSubmission(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id := uuid.New().String()
+		id := uuid.New().String() + ".zip"
 		var filePath string
 
 		user := c.MustGet("user").(*utils.UserDetails)

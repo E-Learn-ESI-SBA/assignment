@@ -62,22 +62,30 @@ func DeleteAssignmentByID(ctx context.Context, db *sql.DB, assignmentID uuid.UUI
 	return nil
 }
 
-func GetAssignments(ctx context.Context, db *sql.DB, filter interfaces.AssignmentFilter) ([]models.Assignment, error) {
+func GetAssignments(ctx context.Context, db *sql.DB, filter interfaces.AssignmentFilter, filterId string, filterBy string) ([]models.Assignment, error) {
 	var assignments []models.Assignment
 	var query string
 	var args []interface{}
-	log.Print("zz")
-	log.Print(*filter.ModuleId)
-	log.Print("zz")
 	query = "SELECT id, title, description, file, deadline, year, teacher_id, module_id FROM assignments WHERE 1=1"
-	if *filter.ModuleId != "" {
-		query += " AND module_id = $1"
-		args = append(args, *filter.ModuleId)
+	// if *filter.ModuleId != "" {
+	// 	query += " AND module_id = $1"
+	// 	args = append(args, *filter.ModuleId)
+	// }
+	// if *filter.TeacherId != "" {
+	// 	query += " AND teacher_id = $2"
+	// 	args = append(args, *filter.TeacherId)
+	// }
+
+	if filterId != "" {
+		if filterBy == "Year"{
+			query += " AND year = $1"
+			args = append(args, filterId)
+		} else {
+			query += " AND teacher_id = $1"
+			args = append(args, filterId)
+		}
 	}
-	if *filter.TeacherId != "" {
-		query += " AND teacher_id = $2"
-		args = append(args, *filter.TeacherId)
-	}
+
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		log.Printf("Error executing query: %v", err)
