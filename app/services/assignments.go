@@ -54,14 +54,18 @@ func UpdateAssignment(ctx context.Context, db *sql.DB, assignmentId uuid.UUID, e
 }
 
 func DeleteAssignmentByID(ctx context.Context, db *sql.DB, assignmentID uuid.UUID) error {
-	_, err := db.ExecContext(ctx, "DELETE FROM assignments WHERE id = $1", assignmentID)
+	_, err := db.ExecContext(ctx, "DELETE FROM submissions WHERE assignment_id = $1", assignmentID)
 	if err != nil {
-		log.Printf("Error when deleting assignment with ID %s: %v", assignmentID, err)
-		return err
+	  return err 
+	}
+  
+	_, err = db.ExecContext(ctx, "DELETE FROM assignments WHERE id = $1", assignmentID)
+	if err != nil {
+	  return err 
 	}
 	return nil
-}
-
+  }
+  
 func GetAssignments(ctx context.Context, db *sql.DB, filter interfaces.AssignmentFilter, filterId string, filterBy string) ([]models.Assignment, error) {
 	var assignments []models.Assignment
 	var query string
@@ -75,7 +79,7 @@ func GetAssignments(ctx context.Context, db *sql.DB, filter interfaces.Assignmen
 	// 	query += " AND teacher_id = $2"
 	// 	args = append(args, *filter.TeacherId)
 	// }
-
+ 
 	if filterId != "" {
 		if filterBy == "Year"{
 			query += " AND year = $1"

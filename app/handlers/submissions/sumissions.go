@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"io"
 	"log"
 
 	// "log"
 	"madaurus/dev/assignment/app/models"
 	"madaurus/dev/assignment/app/services"
+	"madaurus/dev/assignment/app/shared"
 	"madaurus/dev/assignment/app/utils"
 	"net/http"
 	"os"
@@ -25,6 +27,7 @@ func CreateSubmission(db *sql.DB) gin.HandlerFunc {
 		var filePath string
 
 		user := c.MustGet("user").(*utils.UserDetails)
+		fmt.Println(user.ID)
 		assignmentIDStr := c.Param("assignmentId")
 
 		assignmentID, err := uuid.Parse(assignmentIDStr)
@@ -126,7 +129,18 @@ func UpdateSubmission(db *sql.DB) gin.HandlerFunc {
 func GetSubmissionsByAssignmentId(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var submissions []models.Submission
-
+		
+		value, exists := c.Get("user")
+		if !exists {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": shared.UNAUTHORIZED})
+			return
+		}
+		
+		user, ok := value.(*utils.UserDetails)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to parse user details"})
+			return
+		}
 		assignmentIDStr, exists := c.Params.Get("assignmentId")
 		if !exists {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing assignment ID"})
@@ -139,7 +153,11 @@ func GetSubmissionsByAssignmentId(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		submissions, err = services.GetSubmissionByAssignmentID(c.Request.Context(), db, assignmentId)
+		var userID =""
+		if user.Role == "student" {
+			userID = user.ID
+		}
+		submissions, err = services.GetSubmissionByAssignmentID(c.Request.Context(), db, assignmentId, userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve submissions"})
 			return
