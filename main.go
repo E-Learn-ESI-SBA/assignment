@@ -7,10 +7,12 @@ import (
 	"os"
 	"time"
 
+	"madaurus/dev/assignment/app/routes"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
-	"madaurus/dev/assignment/app/routes"
+	"github.com/lpernett/godotenv"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -20,7 +22,8 @@ import (
 var Db *sql.DB
 
 func ConnectDatabse() {
-	psqlSetup := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable", os.Getenv("HOST"), os.Getenv("PORT"), os.Getenv("USER"), os.Getenv("DB_NAME"), os.Getenv("PASSWORD"))
+	psqlSetup := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable", os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_NAME"), os.Getenv("DB_PASSWORD"))
+	log.Println(psqlSetup)
 	db, errSql := sql.Open("postgres", psqlSetup)
 	if errSql != nil {
 		log.Fatal("err when conneting to db", errSql)
@@ -32,7 +35,18 @@ func ConnectDatabse() {
 }
 
 func main() {
+	envieoment := os.Getenv("environment")
+	if envieoment == "production" {
+		gin.SetMode(gin.ReleaseMode)
+		log.Println("Running in production mode")
 
+	} else {
+		gin.SetMode(gin.DebugMode)
+		gin.SetMode(gin.DebugMode)
+		log.Println("Running in debug mode")
+		gin.SetMode(gin.DebugMode)
+		_ = godotenv.Load()
+	}
 	configCors := cors.Config{
 		AllowAllOrigins: true,
 		AllowMethods:    []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
